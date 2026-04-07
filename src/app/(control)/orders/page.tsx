@@ -5,8 +5,8 @@ import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { parseOrderFilters } from "@/lib/order-filters";
+import { buildQueueSegments } from "@/server/repositories/dashboard";
 import { getOrderOperators, getOrdersList } from "@/server/repositories/orders";
-import { getCommandCenterData } from "@/server/repositories/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,11 @@ export default async function OrdersPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseOrderFilters((await searchParams) ?? {});
-  const [orders, operators, commandCenter] = await Promise.all([
+  const [orders, operators] = await Promise.all([
     getOrdersList(filters),
     getOrderOperators(),
-    getCommandCenterData(),
   ]);
-  const orderSegments = commandCenter.queueSegments.filter((segment) =>
+  const orderSegments = buildQueueSegments(orders).filter((segment) =>
     ["/orders?priority=critical", "/orders?queueStatus=pending_review", "/orders?assignedUserId=unassigned"].includes(
       segment.href,
     ),

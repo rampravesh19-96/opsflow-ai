@@ -9,9 +9,11 @@ import type {
   OperatorWorkload,
   QueueSegment,
 } from "@/server/types/domain";
-import { getIssueOrdersList, getOrdersList } from "@/server/repositories/orders";
+import { getOrdersList } from "@/server/repositories/orders";
 
-function buildQueueSegments(ordersList: Awaited<ReturnType<typeof getOrdersList>>): QueueSegment[] {
+export function buildQueueSegments(
+  ordersList: Awaited<ReturnType<typeof getOrdersList>>,
+): QueueSegment[] {
   return [
     {
       label: "Critical queue",
@@ -51,7 +53,7 @@ function buildQueueSegments(ordersList: Awaited<ReturnType<typeof getOrdersList>
   ];
 }
 
-function buildOperatorWorkload(
+export function buildOperatorWorkload(
   operators: { id: string; fullName: string }[],
   ordersList: Awaited<ReturnType<typeof getOrdersList>>,
 ) {
@@ -73,33 +75,51 @@ function buildOperatorWorkload(
     .sort((left, right) => right.activeCases - left.activeCases);
 }
 
+export async function getActionRunsList(limit?: number) {
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      id: actionRuns.id,
+      actionType: actionRuns.actionType,
+      status: actionRuns.status,
+      createdAt: actionRuns.createdAt,
+      orderExternalId: orders.externalOrderId,
+      orderDisplayId: orders.displayId,
+      requestedBy: users.fullName,
+      resultSummary: sql<string>`coalesce(${actionRuns.result}->>'summary', '')`,
+    })
+    .from(actionRuns)
+    .innerJoin(orders, eq(actionRuns.orderId, orders.id))
+    .leftJoin(users, eq(actionRuns.requestedByUserId, users.id))
+    .orderBy(desc(actionRuns.createdAt))
+    .limit(limit ?? 100);
+
+  return rows.map<ActionRunRecord>((actionRun) => ({
+    id: actionRun.id,
+    orderId: actionRun.orderExternalId,
+    orderDisplayId: actionRun.orderDisplayId,
+    actionType: actionRun.actionType,
+    status: actionRun.status,
+    requestedBy: actionRun.requestedBy ?? "System",
+    createdAt: actionRun.createdAt.toISOString(),
+    resultSummary: actionRun.resultSummary || undefined,
+  }));
+}
+
 export async function getCommandCenterData() {
   const db = getDb();
-  const ordersList = await getOrdersList();
 
-  const [openQueuesRow, paymentFailuresRow, issueReviewRow, actionRowsRaw, operatorRows] =
+  const [ordersList, openQueuesRow, paymentFailuresRow, issueReviewRow, actionRunsList, operatorRows] =
     await Promise.all([
+      getOrdersList(),
       db.select({ value: count() }).from(orders).where(ne(orders.queueStatus, "resolved")),
       db.select({ value: count() }).from(orders).where(ne(orders.paymentStatus, "paid")),
       db
         .select({ value: count() })
         .from(orders)
         .where(eq(orders.queueStatus, "pending_review")),
-      db
-        .select({
-          id: actionRuns.id,
-          actionType: actionRuns.actionType,
-          status: actionRuns.status,
-          createdAt: actionRuns.createdAt,
-          orderExternalId: orders.externalOrderId,
-          orderDisplayId: orders.displayId,
-          requestedBy: users.fullName,
-          resultSummary: sql<string>`coalesce(${actionRuns.result}->>'summary', '')`,
-        })
-        .from(actionRuns)
-        .innerJoin(orders, eq(actionRuns.orderId, orders.id))
-        .leftJoin(users, eq(actionRuns.requestedByUserId, users.id))
-        .orderBy(desc(actionRuns.createdAt)),
+      getActionRunsList(4),
       db
         .select({
           id: users.id,
@@ -133,7 +153,9 @@ export async function getCommandCenterData() {
     {
       label: "Payment failures",
       value: String(paymentFailuresRow[0]?.value ?? 0),
-      delta: `${ordersList.filter((order) => order.paymentStatus === "failed").length} hard failures`,
+      delta: `${
+        ordersList.filter((order) => order.paymentStatus === "failed").length
+      } hard failures`,
     },
     {
       label: "SLA nearing breach",
@@ -159,17 +181,6 @@ export async function getCommandCenterData() {
     },
   ];
 
-  const actionRunsList: ActionRunRecord[] = actionRowsRaw.map((actionRun) => ({
-    id: actionRun.id,
-    orderId: actionRun.orderExternalId,
-    orderDisplayId: actionRun.orderDisplayId,
-    actionType: actionRun.actionType,
-    status: actionRun.status,
-    requestedBy: actionRun.requestedBy ?? "System",
-    createdAt: actionRun.createdAt.toISOString(),
-    resultSummary: actionRun.resultSummary || undefined,
-  }));
-
   return {
     metrics,
     issueBuckets,
@@ -181,13 +192,4 @@ export async function getCommandCenterData() {
     queueSegments: buildQueueSegments(ordersList),
     operatorWorkload: buildOperatorWorkload(operatorRows, ordersList),
   };
-}
-
-export async function getIssuesList() {
-  return getIssueOrdersList();
-}
-
-export async function getActionRunsList() {
-  const { actionRuns } = await getCommandCenterData();
-  return actionRuns;
 }

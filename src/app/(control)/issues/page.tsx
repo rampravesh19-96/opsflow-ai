@@ -6,8 +6,8 @@ import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { parseOrderFilters } from "@/lib/order-filters";
+import { buildQueueSegments } from "@/server/repositories/dashboard";
 import { getIssueOrdersList, getOrderOperators } from "@/server/repositories/orders";
-import { getCommandCenterData } from "@/server/repositories/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,11 @@ export default async function IssuesPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseOrderFilters((await searchParams) ?? {});
-  const [issueOrders, operators, commandCenter] = await Promise.all([
+  const [issueOrders, operators] = await Promise.all([
     getIssueOrdersList(filters),
     getOrderOperators(),
-    getCommandCenterData(),
   ]);
-  const issueSegments = commandCenter.queueSegments.filter((segment) =>
+  const issueSegments = buildQueueSegments(issueOrders).filter((segment) =>
     ["/issues?paymentStatus=failed", "/issues?fulfillmentStatus=delayed"].includes(segment.href),
   );
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ import { getDb } from "@/server/db/client";
 import {
   actionRuns,
   aiInsights,
+  customers,
   fulfillments,
   orderEvents,
   orderNotes,
@@ -16,7 +17,6 @@ import {
   payments,
   users,
 } from "@/server/db/schema";
-import { getOrderWorkspaceById } from "@/server/repositories/orders";
 
 const updateOrderWorkflowSchema = z.object({
   orderId: z.string().min(1),
@@ -41,52 +41,180 @@ const runRecoveryActionSchema = z.object({
 });
 
 function revalidateOrderSurfaces(orderId: string, customerExternalId: string) {
-  revalidatePath("/");
-  revalidatePath("/orders");
-  revalidatePath("/issues");
   revalidatePath(`/orders/${orderId}`);
   revalidatePath(`/customers/${customerExternalId}`);
 }
 
-async function refreshAiInsightsForOrder(orderId: string) {
-  const workspace = await getOrderWorkspaceById(orderId);
+function revalidateQueueSurfaces() {
+  revalidatePath("/");
+  revalidatePath("/orders");
+  revalidatePath("/issues");
+}
 
-  if (!workspace) {
+function revalidateActionHistorySurface() {
+  revalidatePath("/actions");
+}
+
+async function refreshAiInsightsForOrder(orderId: string) {
+  const db = getDb();
+
+  const orderRows = await db
+    .select({
+      internalId: orders.id,
+      customerId: orders.customerId,
+      externalOrderId: orders.externalOrderId,
+      displayId: orders.displayId,
+      channel: orders.channel,
+      createdAt: orders.createdAt,
+      totalAmount: orders.totalAmount,
+      currencyCode: orders.currencyCode,
+      health: orders.health,
+      priority: orders.priority,
+      queueStatus: orders.queueStatus,
+      paymentStatus: orders.paymentStatus,
+      fulfillmentStatus: orders.fulfillmentStatus,
+      issueLabel: orders.issueLabel,
+      riskReason: orders.riskReason,
+      shippingMethod: orders.shippingMethod,
+      customerExternalId: customers.externalCustomerId,
+      customerName: customers.name,
+      customerEmail: customers.email,
+      customerSegment: customers.segment,
+      customerRegion: customers.region,
+      assignedTo: users.fullName,
+    })
+    .from(orders)
+    .innerJoin(customers, eq(orders.customerId, customers.id))
+    .leftJoin(users, eq(orders.assignedUserId, users.id))
+    .where(eq(orders.externalOrderId, orderId))
+    .limit(1);
+
+  const base = orderRows[0];
+
+  if (!base) {
     return;
   }
 
-  const guidance = deriveOrderAiGuidance(workspace.order, workspace.actionRuns);
-  const db = getDb();
+  const [customerCountRows, eventRows, noteRows, actionRunRows] = await Promise.all([
+    db
+      .select({
+        value: count(),
+      })
+      .from(orders)
+      .where(eq(orders.customerId, base.customerId)),
+    db
+      .select({
+        id: orderEvents.id,
+        type: orderEvents.eventType,
+        occurredAt: orderEvents.occurredAt,
+        actor: orderEvents.actorLabel,
+        description: orderEvents.summary,
+      })
+      .from(orderEvents)
+      .where(eq(orderEvents.orderId, base.internalId))
+      .orderBy(desc(orderEvents.occurredAt)),
+    db
+      .select({
+        id: orderNotes.id,
+        body: orderNotes.body,
+        createdAt: orderNotes.createdAt,
+        author: users.fullName,
+      })
+      .from(orderNotes)
+      .innerJoin(users, eq(orderNotes.authorUserId, users.id))
+      .where(eq(orderNotes.orderId, base.internalId))
+      .orderBy(desc(orderNotes.createdAt)),
+    db
+      .select({
+        id: actionRuns.id,
+        actionType: actionRuns.actionType,
+        status: actionRuns.status,
+        createdAt: actionRuns.createdAt,
+        requestedBy: users.fullName,
+        resultSummary: actionRuns.result,
+        orderDisplayId: orders.displayId,
+      })
+      .from(actionRuns)
+      .innerJoin(orders, eq(actionRuns.orderId, orders.id))
+      .leftJoin(users, eq(actionRuns.requestedByUserId, users.id))
+      .where(eq(actionRuns.orderId, base.internalId))
+      .orderBy(desc(actionRuns.createdAt)),
+  ]);
+
+  const order = {
+    id: base.externalOrderId,
+    displayId: base.displayId,
+    channel: base.channel as "web" | "marketplace" | "manual",
+    createdAt: base.createdAt.toISOString(),
+    totalAmount: base.totalAmount,
+    currency: base.currencyCode as "USD",
+    health: base.health,
+    priority: base.priority,
+    queueStatus: base.queueStatus,
+    paymentStatus: base.paymentStatus,
+    fulfillmentStatus: base.fulfillmentStatus,
+    assignedTo: base.assignedTo ?? "Unassigned",
+    issueLabel: base.issueLabel ?? "No issue label",
+    riskReason: base.riskReason ?? "No risk notes recorded.",
+    shippingMethod: base.shippingMethod ?? "Not assigned",
+    customer: {
+      id: base.customerExternalId,
+      name: base.customerName,
+      email: base.customerEmail,
+      segment: base.customerSegment,
+      region: base.customerRegion,
+      totalOrders: customerCountRows[0]?.value ?? 1,
+    },
+    timeline: eventRows.map((event) => ({
+      id: event.id,
+      type: event.type,
+      occurredAt: event.occurredAt.toISOString(),
+      actor: event.actor,
+      description: event.description,
+    })),
+    notes: noteRows.map((note) => ({
+      id: note.id,
+      body: note.body,
+      createdAt: note.createdAt.toISOString(),
+      author: note.author,
+    })),
+  };
+
+  const actionHistory = actionRunRows.map((actionRun) => ({
+    id: actionRun.id,
+    orderId,
+    orderDisplayId: actionRun.orderDisplayId,
+    actionType: actionRun.actionType,
+    status: actionRun.status,
+    requestedBy: actionRun.requestedBy ?? "System",
+    createdAt: actionRun.createdAt.toISOString(),
+    resultSummary:
+      typeof actionRun.resultSummary === "object" &&
+      actionRun.resultSummary &&
+      "summary" in actionRun.resultSummary
+        ? String(actionRun.resultSummary.summary)
+        : undefined,
+  }));
+
+  const guidance = deriveOrderAiGuidance(order, actionHistory);
 
   await db.transaction(async (tx) => {
-    const rows = await tx
-      .select({ id: orders.id })
-      .from(orders)
-      .where(eq(orders.externalOrderId, orderId))
-      .limit(1);
-
-    const order = rows[0];
-
-    if (!order) {
-      return;
-    }
-
-    await tx.delete(aiInsights).where(eq(aiInsights.orderId, order.id));
+    await tx.delete(aiInsights).where(eq(aiInsights.orderId, base.internalId));
     await tx.insert(aiInsights).values([
       {
-        orderId: order.id,
+        orderId: base.internalId,
         type: "support_summary",
         content: guidance.summary,
         confidenceScore: guidance.confidence,
       },
       {
-        orderId: order.id,
+        orderId: base.internalId,
         type: "issue_classification",
         content: guidance.issueType,
         confidenceScore: guidance.confidence,
       },
       {
-        orderId: order.id,
+        orderId: base.internalId,
         type: "next_action",
         content: guidance.nextAction,
         confidenceScore: guidance.confidence,
@@ -184,6 +312,7 @@ export async function updateOrderWorkflowAction(formData: FormData) {
 
   await refreshAiInsightsForOrder(parsed.orderId);
   revalidateOrderSurfaces(parsed.orderId, parsed.customerExternalId);
+  revalidateQueueSurfaces();
 }
 
 export async function addOrderNoteAction(formData: FormData) {
@@ -425,4 +554,6 @@ export async function runRecoveryAction(formData: FormData) {
 
   await refreshAiInsightsForOrder(parsed.orderId);
   revalidateOrderSurfaces(parsed.orderId, parsed.customerExternalId);
+  revalidateQueueSurfaces();
+  revalidateActionHistorySurface();
 }
