@@ -48,6 +48,7 @@ export interface ActionRunRecord {
   status: string;
   requestedBy: string;
   createdAt: string;
+  resultSummary?: string;
 }
 
 export interface OrderRecord {
@@ -96,4 +97,17 @@ export interface OrderListFilters {
   priority: string;
   assignedUserId: string;
   health: string;
+}
+
+export interface AiGuidance {
+  summary: string;
+  issueType: string;
+  nextAction: string;
+  confidence: number;
+}
+
+export interface OrderWorkspace {
+  order: OrderRecord;
+  actionRuns: ActionRunRecord[];
+  ai: AiGuidance;
 }

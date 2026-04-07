@@ -1,4 +1,4 @@
-import { count, eq, ne } from "drizzle-orm";
+import { count, eq, ne, sql } from "drizzle-orm";
 
 import { getDb } from "@/server/db/client";
 import { actionRuns, orders, users } from "@/server/db/schema";
@@ -25,6 +25,7 @@ export async function getCommandCenterData() {
         orderExternalId: orders.externalOrderId,
         orderDisplayId: orders.displayId,
         requestedBy: users.fullName,
+        resultSummary: sql<string>`coalesce(${actionRuns.result}->>'summary', '')`,
       })
       .from(actionRuns)
       .innerJoin(orders, eq(actionRuns.orderId, orders.id))
@@ -85,6 +86,7 @@ export async function getCommandCenterData() {
     status: actionRun.status,
     requestedBy: actionRun.requestedBy ?? "System",
     createdAt: actionRun.createdAt.toISOString(),
+    resultSummary: actionRun.resultSummary || undefined,
   }));
 
   return {

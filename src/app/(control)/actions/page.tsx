@@ -1,5 +1,6 @@
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDateTime } from "@/lib/format";
 import { getActionRunsList } from "@/server/repositories/dashboard";
 
@@ -27,8 +28,13 @@ export default async function ActionsPage() {
                 <p className="mt-2 text-sm text-muted">
                   Requested by {run.requestedBy} on {formatDateTime(run.createdAt)}.
                 </p>
+                {run.resultSummary ? (
+                  <p className="mt-3 text-sm leading-6 text-muted">{run.resultSummary}</p>
+                ) : null}
               </div>
-              <p className="text-xs uppercase tracking-[0.24em] text-subtle">{run.status}</p>
+              <StatusBadge tone={run.status === "failed" ? "danger" : "success"}>
+                {run.status}
+              </StatusBadge>
             </div>
           </Panel>
         ))}

@@ -135,7 +135,61 @@ export const seedAiInsights = [
   {
     orderExternalId: "ord_1001",
     type: "support_summary" as const,
-    content: "Placeholder only. AI summaries will be enabled in a later milestone.",
-    confidenceScore: 0,
+    content:
+      "OF-48231 is blocked because payment capture failed after the original authorization expired. Shipment should remain on hold until the customer completes reauthorization.",
+    confidenceScore: 93,
+  },
+  {
+    orderExternalId: "ord_1001",
+    type: "issue_classification" as const,
+    content: "Payment recovery",
+    confidenceScore: 93,
+  },
+  {
+    orderExternalId: "ord_1001",
+    type: "next_action" as const,
+    content:
+      "Request a fresh payment authorization from the customer before attempting another capture.",
+    confidenceScore: 93,
+  },
+  {
+    orderExternalId: "ord_1002",
+    type: "support_summary" as const,
+    content:
+      "OF-48212 is paid but delayed in fulfillment due to inventory split across locations. The case is best handled through warehouse coordination rather than customer payment follow-up.",
+    confidenceScore: 91,
+  },
+  {
+    orderExternalId: "ord_1002",
+    type: "issue_classification" as const,
+    content: "Fulfillment delay",
+    confidenceScore: 91,
+  },
+  {
+    orderExternalId: "ord_1002",
+    type: "next_action" as const,
+    content:
+      "Coordinate with warehouse operations to release or reroute stock, then resync the order state.",
+    confidenceScore: 91,
+  },
+  {
+    orderExternalId: "ord_1003",
+    type: "support_summary" as const,
+    content:
+      "OF-48188 is pending manual review because the order triggered first-time customer risk checks before payment capture.",
+    confidenceScore: 88,
+  },
+  {
+    orderExternalId: "ord_1003",
+    type: "issue_classification" as const,
+    content: "Risk and payment review",
+    confidenceScore: 88,
+  },
+  {
+    orderExternalId: "ord_1003",
+    type: "next_action" as const,
+    content:
+      "Review the risk hold and decide whether capture can proceed before releasing any fulfillment work.",
+    confidenceScore: 88,
   },
 ];

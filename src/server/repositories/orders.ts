@@ -10,13 +10,16 @@ import {
   type SQL,
 } from "drizzle-orm";
 
+import { deriveOrderAiGuidance } from "@/server/ai/order-assistant";
 import { getDb } from "@/server/db/client";
-import { customers, orderEvents, orderNotes, orders, users } from "@/server/db/schema";
+import { actionRuns, customers, orderEvents, orderNotes, orders, users } from "@/server/db/schema";
 import type {
+  ActionRunRecord,
   Customer,
   OperatorRecord,
   OrderListFilters,
   OrderRecord,
+  OrderWorkspace,
 } from "@/server/types/domain";
 
 function formatIso(value: Date | string | null | undefined) {
@@ -346,6 +349,55 @@ export async function getOrderDetailById(orderId: string) {
       author: note.author,
     })),
   } satisfies OrderRecord;
+}
+
+export async function getOrderActionRuns(orderId: string) {
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      id: actionRuns.id,
+      actionType: actionRuns.actionType,
+      status: actionRuns.status,
+      createdAt: actionRuns.createdAt,
+      requestedBy: users.fullName,
+      resultSummary: sql<string>`coalesce(${actionRuns.result}->>'summary', '')`,
+      orderExternalId: orders.externalOrderId,
+      orderDisplayId: orders.displayId,
+    })
+    .from(actionRuns)
+    .innerJoin(orders, eq(actionRuns.orderId, orders.id))
+    .leftJoin(users, eq(actionRuns.requestedByUserId, users.id))
+    .where(eq(orders.externalOrderId, orderId))
+    .orderBy(desc(actionRuns.createdAt));
+
+  return rows.map<ActionRunRecord>((row) => ({
+    id: row.id,
+    orderId: row.orderExternalId,
+    orderDisplayId: row.orderDisplayId,
+    actionType: row.actionType,
+    status: row.status,
+    requestedBy: row.requestedBy ?? "System",
+    createdAt: formatIso(row.createdAt),
+    resultSummary: row.resultSummary || undefined,
+  }));
+}
+
+export async function getOrderWorkspaceById(orderId: string) {
+  const [order, actionRuns] = await Promise.all([
+    getOrderDetailById(orderId),
+    getOrderActionRuns(orderId),
+  ]);
+
+  if (!order) {
+    return null;
+  }
+
+  return {
+    order,
+    actionRuns,
+    ai: deriveOrderAiGuidance(order, actionRuns),
+  } satisfies OrderWorkspace;
 }
 
 export async function getCustomerContext(customerId: string) {

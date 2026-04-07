@@ -163,7 +163,7 @@ async function main() {
     console.log(`Customers inserted: ${insertedCustomers.length}`);
     console.log(`Orders inserted: ${insertedOrders.length}`);
     console.log(`Action runs inserted: ${seedActionRuns.length}`);
-    console.log(`AI placeholders inserted: ${seedAiInsights.length}`);
+    console.log(`AI insights inserted: ${seedAiInsights.length}`);
   });
 
   await db.$client.end();
