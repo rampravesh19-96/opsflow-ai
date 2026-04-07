@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09111f;
+  --background-panel: #101c33;
+  --background-panel-strong: #13213c;
+  --foreground: #eff4fb;
+  --foreground-muted: #99a8c2;
+  --foreground-subtle: #73829f;
+  --border: rgba(153, 168, 194, 0.18);
+  --border-strong: rgba(153, 168, 194, 0.28);
+  --shadow-soft: 0 18px 48px rgba(2, 6, 23, 0.28);
+  --shadow-panel: 0 12px 30px rgba(2, 6, 23, 0.26);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top, rgba(45, 212, 191, 0.08), transparent 28%),
+    linear-gradient(180deg, #0b1527 0%, #09111f 55%, #07101b 100%);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plex-sans), sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(94, 234, 212, 0.26);
+  color: #f8fafc;
+}
+
+.surface-grid {
+  background-image:
+    linear-gradient(rgba(153, 168, 194, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(153, 168, 194, 0.05) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.surface-panel {
+  background: linear-gradient(
+    180deg,
+    rgba(15, 27, 49, 0.96) 0%,
+    rgba(10, 19, 35, 0.98) 100%
+  );
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-panel);
+}
+
+.surface-panel-strong {
+  background: linear-gradient(
+    180deg,
+    rgba(19, 33, 60, 0.98) 0%,
+    rgba(10, 19, 35, 1) 100%
+  );
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.text-muted {
+  color: var(--foreground-muted);
+}
+
+.text-subtle {
+  color: var(--foreground-subtle);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(153, 168, 194, 0.35) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(153, 168, 194, 0.22);
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
 }
