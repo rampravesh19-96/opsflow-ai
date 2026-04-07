@@ -111,3 +111,20 @@ export interface OrderWorkspace {
   actionRuns: ActionRunRecord[];
   ai: AiGuidance;
 }
+
+export interface QueueSegment {
+  label: string;
+  href: string;
+  count: number;
+  description: string;
+  tone: "default" | "danger" | "warning" | "success" | "accent";
+}
+
+export interface OperatorWorkload {
+  operatorId: string;
+  operatorName: string;
+  activeCases: number;
+  criticalCases: number;
+  blockedCases: number;
+  pendingReviewCases: number;
+}

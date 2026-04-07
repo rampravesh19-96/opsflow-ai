@@ -1,10 +1,12 @@
 import { OrderFilters } from "@/components/orders/order-filters";
+import { QueuePresets } from "@/components/orders/queue-presets";
 import { OrderRow } from "@/components/orders/order-row";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { parseOrderFilters } from "@/lib/order-filters";
 import { getOrderOperators, getOrdersList } from "@/server/repositories/orders";
+import { getCommandCenterData } from "@/server/repositories/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +16,16 @@ export default async function OrdersPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseOrderFilters((await searchParams) ?? {});
-  const [orders, operators] = await Promise.all([
+  const [orders, operators, commandCenter] = await Promise.all([
     getOrdersList(filters),
     getOrderOperators(),
+    getCommandCenterData(),
   ]);
+  const orderSegments = commandCenter.queueSegments.filter((segment) =>
+    ["/orders?priority=critical", "/orders?queueStatus=pending_review", "/orders?assignedUserId=unassigned"].includes(
+      segment.href,
+    ),
+  );
 
   return (
     <div className="space-y-7">
@@ -27,6 +35,10 @@ export default async function OrdersPage({
         description="Filter-heavy, queue-oriented order review surface for payment, fulfillment, and support issues."
         action={<StatusBadge tone="accent">{orders.length} visible</StatusBadge>}
       />
+
+      <Panel className="p-5">
+        <QueuePresets segments={orderSegments} title="Saved views" />
+      </Panel>
 
       <Panel className="p-4">
         <OrderFilters

@@ -1,3 +1,6 @@
+import { ActionRunList } from "@/components/actions/action-run-list";
+import { OperatorWorkloadList } from "@/components/dashboard/operator-workload-list";
+import { QueueSegments } from "@/components/dashboard/queue-segments";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -7,14 +10,15 @@ import { getCommandCenterData } from "@/server/repositories/dashboard";
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage() {
-  const { criticalOrders, issueBuckets, metrics } = await getCommandCenterData();
+  const { actionRuns, criticalOrders, issueBuckets, metrics, operatorWorkload, queueSegments } =
+    await getCommandCenterData();
 
   return (
     <div className="space-y-7">
       <SectionHeader
         eyebrow="Phase 1 / Command Center"
         title="Operations command center"
-        description="A serious internal workspace for monitoring order risk, queue pressure, payment failures, and fulfillment bottlenecks."
+        description="A serious internal workspace for monitoring queue pressure, spotting operator bottlenecks, and intervening on transaction-heavy order failures."
       />
 
       <div className="grid gap-4 xl:grid-cols-4">
@@ -23,9 +27,24 @@ export default async function CommandCenterPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.5fr,0.9fr]">
+      <Panel className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-subtle">
+              Saved queue segments
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Quick operational views</h2>
+          </div>
+          <StatusBadge tone="accent">Shift-ready</StatusBadge>
+        </div>
+        <div className="mt-5">
+          <QueueSegments segments={queueSegments} />
+        </div>
+      </Panel>
+
+      <div className="grid gap-4 xl:grid-cols-[1.3fr,0.9fr]">
         <Panel strong className="p-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-subtle">
                 Critical queue
@@ -85,15 +104,29 @@ export default async function CommandCenterPage() {
 
           <Panel className="p-5">
             <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-subtle">
-              Recovery execution
+              Operator workload
             </p>
-            <div className="mt-4 space-y-3 text-sm text-muted">
-              <p>Retry and recovery buttons are intentionally non-executable in milestone 1.</p>
-              <p>The platform shell reserves these workflows so later milestones can add guarded server actions and audit logging cleanly.</p>
+            <div className="mt-4">
+              <OperatorWorkloadList operators={operatorWorkload} />
             </div>
           </Panel>
         </div>
       </div>
+
+      <Panel className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-subtle">
+              Recent recovery activity
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Latest action history</h2>
+          </div>
+          <StatusBadge tone="success">{actionRuns.length} tracked runs</StatusBadge>
+        </div>
+        <div className="mt-5">
+          <ActionRunList runs={actionRuns.slice(0, 4)} compact />
+        </div>
+      </Panel>
     </div>
   );
 }
