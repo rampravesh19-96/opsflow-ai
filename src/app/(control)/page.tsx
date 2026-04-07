@@ -2,10 +2,13 @@ import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { commandCenterMetrics, issueBuckets } from "@/server/demo-data/metrics";
-import { demoOrders } from "@/server/demo-data/orders";
+import { getCommandCenterData } from "@/server/repositories/dashboard";
 
-export default function CommandCenterPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CommandCenterPage() {
+  const { criticalOrders, issueBuckets, metrics } = await getCommandCenterData();
+
   return (
     <div className="space-y-7">
       <SectionHeader
@@ -15,7 +18,7 @@ export default function CommandCenterPage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-4">
-        {commandCenterMetrics.map((metric) => (
+        {metrics.map((metric) => (
           <StatCard key={metric.label} {...metric} />
         ))}
       </div>
@@ -32,7 +35,7 @@ export default function CommandCenterPage() {
             <StatusBadge tone="danger">Live priority view</StatusBadge>
           </div>
           <div className="mt-5 space-y-3">
-            {demoOrders.map((order) => (
+            {criticalOrders.map((order) => (
               <div
                 key={order.id}
                 className="rounded-2xl border border-white/6 bg-white/[0.03] p-4"
@@ -40,7 +43,7 @@ export default function CommandCenterPage() {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-white">
-                      {order.displayId} · {order.customer.name}
+                      {order.displayId} - {order.customer.name}
                     </p>
                     <p className="text-sm text-muted">{order.riskReason}</p>
                   </div>

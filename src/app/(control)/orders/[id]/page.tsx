@@ -6,7 +6,9 @@ import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/format";
-import { getOrderById } from "@/server/demo-data/orders";
+import { getOrderDetailById } from "@/server/repositories/orders";
+
+export const dynamic = "force-dynamic";
 
 export default async function OrderDetailPage({
   params,
@@ -14,7 +16,7 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const order = getOrderById(id);
+  const order = await getOrderDetailById(id);
 
   if (!order) {
     notFound();
@@ -24,7 +26,7 @@ export default async function OrderDetailPage({
     <div className="space-y-7">
       <SectionHeader
         eyebrow="Order Workspace"
-        title={`${order.displayId} · ${order.customer.name}`}
+        title={`${order.displayId} - ${order.customer.name}`}
         description={order.riskReason}
         action={
           <div className="flex flex-wrap gap-2">
@@ -95,7 +97,7 @@ export default async function OrderDetailPage({
                     key={action}
                     className="w-full rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-left text-sm text-muted"
                   >
-                    {action} · placeholder only in milestone 1
+                    {action} - placeholder until write-side flows are enabled
                   </button>
                 ),
               )}

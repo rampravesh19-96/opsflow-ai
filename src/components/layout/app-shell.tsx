@@ -134,7 +134,7 @@ function TopBar() {
             Shift queue: <span className="font-medium text-white">US East Core Ops</span>
           </div>
           <div className="rounded-2xl border border-teal-400/16 bg-teal-400/10 px-4 py-3 text-sm text-teal-100">
-            3 critical orders require action
+            PostgreSQL-backed operational reads enabled
           </div>
         </div>
       </div>

@@ -2,16 +2,20 @@ import { OrderRow } from "@/components/orders/order-row";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { demoOrders } from "@/server/demo-data/orders";
+import { getOrdersList } from "@/server/repositories/orders";
 
-export default function OrdersPage() {
+export const dynamic = "force-dynamic";
+
+export default async function OrdersPage() {
+  const orders = await getOrdersList();
+
   return (
     <div className="space-y-7">
       <SectionHeader
         eyebrow="Orders"
         title="Order operations queue"
         description="Filter-heavy, queue-oriented order review surface for payment, fulfillment, and support issues."
-        action={<StatusBadge tone="accent">Demo data</StatusBadge>}
+        action={<StatusBadge tone="accent">PostgreSQL</StatusBadge>}
       />
 
       <Panel className="p-4">
@@ -34,7 +38,7 @@ export default function OrdersPage() {
       </Panel>
 
       <div className="space-y-3">
-        {demoOrders.map((order) => (
+        {orders.map((order) => (
           <OrderRow key={order.id} order={order} />
         ))}
       </div>

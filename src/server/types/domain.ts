@@ -40,6 +40,16 @@ export interface OrderNote {
   body: string;
 }
 
+export interface ActionRunRecord {
+  id: string;
+  orderId: string;
+  orderDisplayId: string;
+  actionType: string;
+  status: string;
+  requestedBy: string;
+  createdAt: string;
+}
+
 export interface OrderRecord {
   id: string;
   displayId: string;
@@ -59,4 +69,15 @@ export interface OrderRecord {
   shippingMethod: string;
   timeline: OrderEvent[];
   notes: OrderNote[];
+}
+
+export interface CommandCenterMetric {
+  label: string;
+  value: string;
+  delta: string;
+}
+
+export interface IssueBucket {
+  label: string;
+  count: number;
 }

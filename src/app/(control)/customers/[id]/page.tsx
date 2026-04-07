@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/ui/section-header";
-import { demoOrders, getCustomerById } from "@/server/demo-data/orders";
+import { getCustomerContext } from "@/server/repositories/orders";
+
+export const dynamic = "force-dynamic";
 
 export default async function CustomerDetailPage({
   params,
@@ -10,13 +12,12 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const customer = getCustomerById(id);
+  const context = await getCustomerContext(id);
 
-  if (!customer) {
+  if (!context) {
     notFound();
   }
-
-  const customerOrders = demoOrders.filter((order) => order.customer.id === customer.id);
+  const { customer, orders } = context;
 
   return (
     <div className="space-y-7">
@@ -52,7 +53,7 @@ export default async function CustomerDetailPage({
             Related Orders
           </p>
           <div className="mt-4 space-y-3">
-            {customerOrders.map((order) => (
+            {orders.map((order) => (
               <div key={order.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                 <p className="text-sm font-medium text-white">{order.displayId}</p>
                 <p className="mt-2 text-sm text-muted">{order.issueLabel}</p>
