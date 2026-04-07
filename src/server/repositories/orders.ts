@@ -1,14 +1,23 @@
-import { count, desc, eq, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { getDb } from "@/server/db/client";
-import {
-  customers,
-  orderEvents,
-  orderNotes,
-  orders,
-  users,
-} from "@/server/db/schema";
-import type { Customer, OrderRecord } from "@/server/types/domain";
+import { customers, orderEvents, orderNotes, orders, users } from "@/server/db/schema";
+import type {
+  Customer,
+  OperatorRecord,
+  OrderListFilters,
+  OrderRecord,
+} from "@/server/types/domain";
 
 function formatIso(value: Date | string | null | undefined) {
   if (!value) {
@@ -24,7 +33,141 @@ function isUuid(value: string) {
   );
 }
 
-export async function getOrdersList() {
+function buildOrderWhereClause(filters?: Partial<OrderListFilters>, issueOnly = false) {
+  const conditions: SQL[] = [];
+
+  if (issueOnly) {
+    conditions.push(neHealthHealthy());
+  }
+
+  if (filters?.q) {
+    conditions.push(
+      or(
+        ilike(orders.displayId, `%${filters.q}%`),
+        ilike(orders.externalOrderId, `%${filters.q}%`),
+        ilike(customers.name, `%${filters.q}%`),
+        ilike(customers.email, `%${filters.q}%`),
+        ilike(orders.issueLabel, `%${filters.q}%`),
+      )!,
+    );
+  }
+
+  if (filters?.queueStatus) {
+    conditions.push(eq(orders.queueStatus, filters.queueStatus as typeof orders.$inferSelect.queueStatus));
+  }
+
+  if (filters?.paymentStatus) {
+    conditions.push(
+      eq(orders.paymentStatus, filters.paymentStatus as typeof orders.$inferSelect.paymentStatus),
+    );
+  }
+
+  if (filters?.fulfillmentStatus) {
+    conditions.push(
+      eq(
+        orders.fulfillmentStatus,
+        filters.fulfillmentStatus as typeof orders.$inferSelect.fulfillmentStatus,
+      ),
+    );
+  }
+
+  if (filters?.priority) {
+    conditions.push(eq(orders.priority, filters.priority as typeof orders.$inferSelect.priority));
+  }
+
+  if (filters?.health) {
+    conditions.push(eq(orders.health, filters.health as typeof orders.$inferSelect.health));
+  }
+
+  if (filters?.assignedUserId === "unassigned") {
+    conditions.push(isNull(orders.assignedUserId));
+  } else if (filters?.assignedUserId) {
+    conditions.push(eq(orders.assignedUserId, filters.assignedUserId));
+  }
+
+  if (!conditions.length) {
+    return undefined;
+  }
+
+  return conditions.length === 1 ? conditions[0] : and(...conditions);
+}
+
+function neHealthHealthy() {
+  return or(
+    eq(orders.health, "watch"),
+    eq(orders.health, "at_risk"),
+    eq(orders.health, "blocked"),
+  )!;
+}
+
+function mapOrderRow(row: {
+  externalOrderId: string;
+  displayId: string;
+  channel: string;
+  createdAt: Date;
+  totalAmount: number;
+  currencyCode: string;
+  health: OrderRecord["health"];
+  priority: OrderRecord["priority"];
+  queueStatus: OrderRecord["queueStatus"];
+  paymentStatus: OrderRecord["paymentStatus"];
+  fulfillmentStatus: OrderRecord["fulfillmentStatus"];
+  issueLabel: string | null;
+  riskReason: string | null;
+  shippingMethod: string | null;
+  customerExternalId: string;
+  customerName: string;
+  customerEmail: string;
+  customerSegment: string;
+  customerRegion: string;
+  assignedTo: string | null;
+  customerOrderCount: number;
+}): OrderRecord {
+  return {
+    id: row.externalOrderId,
+    displayId: row.displayId,
+    channel: row.channel as OrderRecord["channel"],
+    createdAt: formatIso(row.createdAt),
+    totalAmount: row.totalAmount,
+    currency: row.currencyCode as "USD",
+    health: row.health,
+    priority: row.priority,
+    queueStatus: row.queueStatus,
+    paymentStatus: row.paymentStatus,
+    fulfillmentStatus: row.fulfillmentStatus,
+    assignedTo: row.assignedTo ?? "Unassigned",
+    issueLabel: row.issueLabel ?? "No issue label",
+    riskReason: row.riskReason ?? "No risk notes recorded.",
+    shippingMethod: row.shippingMethod ?? "Not assigned",
+    customer: {
+      id: row.customerExternalId,
+      name: row.customerName,
+      email: row.customerEmail,
+      segment: row.customerSegment,
+      region: row.customerRegion,
+      totalOrders: row.customerOrderCount,
+    },
+    timeline: [],
+    notes: [],
+  };
+}
+
+export async function getOrderOperators() {
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      id: users.id,
+      fullName: users.fullName,
+      email: users.email,
+    })
+    .from(users)
+    .orderBy(users.fullName);
+
+  return rows as OperatorRecord[];
+}
+
+export async function getOrdersList(filters?: Partial<OrderListFilters>) {
   const db = getDb();
 
   const rows = await db
@@ -55,35 +198,47 @@ export async function getOrdersList() {
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
     .leftJoin(users, eq(orders.assignedUserId, users.id))
+    .where(buildOrderWhereClause(filters))
     .orderBy(desc(orders.createdAt));
 
-  return rows.map<OrderRecord>((row) => ({
-    id: row.externalOrderId,
-    displayId: row.displayId,
-    channel: row.channel as OrderRecord["channel"],
-    createdAt: formatIso(row.createdAt),
-    totalAmount: row.totalAmount,
-    currency: row.currencyCode as "USD",
-    health: row.health,
-    priority: row.priority,
-    queueStatus: row.queueStatus,
-    paymentStatus: row.paymentStatus,
-    fulfillmentStatus: row.fulfillmentStatus,
-    assignedTo: row.assignedTo ?? "Unassigned",
-    issueLabel: row.issueLabel ?? "No issue label",
-    riskReason: row.riskReason ?? "No risk notes recorded.",
-    shippingMethod: row.shippingMethod ?? "Not assigned",
-    customer: {
-      id: row.customerExternalId,
-      name: row.customerName,
-      email: row.customerEmail,
-      segment: row.customerSegment,
-      region: row.customerRegion,
-      totalOrders: row.customerOrderCount,
-    },
-    timeline: [],
-    notes: [],
-  }));
+  return rows.map(mapOrderRow);
+}
+
+export async function getIssueOrdersList(filters?: Partial<OrderListFilters>) {
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      externalOrderId: orders.externalOrderId,
+      displayId: orders.displayId,
+      channel: orders.channel,
+      createdAt: orders.createdAt,
+      totalAmount: orders.totalAmount,
+      currencyCode: orders.currencyCode,
+      health: orders.health,
+      priority: orders.priority,
+      queueStatus: orders.queueStatus,
+      paymentStatus: orders.paymentStatus,
+      fulfillmentStatus: orders.fulfillmentStatus,
+      issueLabel: orders.issueLabel,
+      riskReason: orders.riskReason,
+      shippingMethod: orders.shippingMethod,
+      customerExternalId: customers.externalCustomerId,
+      customerName: customers.name,
+      customerEmail: customers.email,
+      customerSegment: customers.segment,
+      customerRegion: customers.region,
+      assignedTo: users.fullName,
+      customerOrderCount:
+        sql<number>`count(*) over (partition by ${customers.id})`.mapWith(Number),
+    })
+    .from(orders)
+    .innerJoin(customers, eq(orders.customerId, customers.id))
+    .leftJoin(users, eq(orders.assignedUserId, users.id))
+    .where(buildOrderWhereClause(filters, true))
+    .orderBy(desc(orders.createdAt));
+
+  return rows.map(mapOrderRow);
 }
 
 export async function getOrderDetailById(orderId: string) {
@@ -113,6 +268,7 @@ export async function getOrderDetailById(orderId: string) {
       customerSegment: customers.segment,
       customerRegion: customers.region,
       assignedTo: users.fullName,
+      assignedUserId: orders.assignedUserId,
     })
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
@@ -126,12 +282,8 @@ export async function getOrderDetailById(orderId: string) {
     return null;
   }
 
-  const [customerCountRow] = await db
-    .select({ value: count() })
-    .from(orders)
-    .where(eq(orders.customerId, base.customerId));
-
-  const [events, notes] = await Promise.all([
+  const [customerCountRow, events, notes] = await Promise.all([
+    db.select({ value: count() }).from(orders).where(eq(orders.customerId, base.customerId)),
     db
       .select({
         id: orderEvents.id,
@@ -178,7 +330,7 @@ export async function getOrderDetailById(orderId: string) {
       email: base.customerEmail,
       segment: base.customerSegment,
       region: base.customerRegion,
-      totalOrders: customerCountRow?.value ?? 1,
+      totalOrders: customerCountRow[0]?.value ?? 1,
     },
     timeline: events.map((event) => ({
       id: event.id,

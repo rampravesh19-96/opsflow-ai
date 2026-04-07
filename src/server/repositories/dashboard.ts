@@ -3,7 +3,7 @@ import { count, eq, ne } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { actionRuns, orders, users } from "@/server/db/schema";
 import type { ActionRunRecord, CommandCenterMetric, IssueBucket } from "@/server/types/domain";
-import { getOrdersList } from "@/server/repositories/orders";
+import { getIssueOrdersList, getOrdersList } from "@/server/repositories/orders";
 
 export async function getCommandCenterData() {
   const db = getDb();
@@ -99,8 +99,7 @@ export async function getCommandCenterData() {
 }
 
 export async function getIssuesList() {
-  const ordersList = await getOrdersList();
-  return ordersList.filter((order) => order.health !== "healthy");
+  return getIssueOrdersList();
 }
 
 export async function getActionRunsList() {

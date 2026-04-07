@@ -81,3 +81,19 @@ export interface IssueBucket {
   label: string;
   count: number;
 }
+
+export interface OperatorRecord {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface OrderListFilters {
+  q: string;
+  queueStatus: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  priority: string;
+  assignedUserId: string;
+  health: string;
+}

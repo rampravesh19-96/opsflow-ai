@@ -24,12 +24,13 @@ export function OrderRow({ order }: { order: OrderRecord }) {
       className="grid gap-4 rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-4 transition hover:border-white/12 hover:bg-white/[0.04] xl:grid-cols-[1.2fr,0.7fr,0.7fr,0.9fr,1fr,0.8fr]"
     >
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <p className="font-medium text-white">{order.displayId}</p>
           <StatusBadge tone={toneFromHealth(order.health)}>{order.health}</StatusBadge>
+          <StatusBadge tone="default">{order.queueStatus}</StatusBadge>
         </div>
         <div className="text-sm text-muted">
-          {order.customer.name} · {order.customer.region}
+          {order.customer.name} - {order.customer.region}
         </div>
       </div>
       <div>
