@@ -36,7 +36,7 @@ export function ActionRunList({
                 <Link href={`/orders/${run.orderId}`} className="text-white hover:text-teal-100">
                   {run.orderDisplayId}
                 </Link>{" "}
-                · Requested by {run.requestedBy} on {formatDateTime(run.createdAt)}
+                requested by {run.requestedBy} on {formatDateTime(run.createdAt)}
               </p>
               {run.resultSummary ? (
                 <p className="text-sm leading-6 text-muted">{run.resultSummary}</p>

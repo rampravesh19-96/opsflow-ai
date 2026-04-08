@@ -2,6 +2,10 @@ import { formatDateTime } from "@/lib/format";
 import type { OrderEvent } from "@/server/types/domain";
 
 export function TimelineList({ events }: { events: OrderEvent[] }) {
+  if (!events.length) {
+    return <p className="text-sm text-muted">No audit events have been recorded for this order yet.</p>;
+  }
+
   return (
     <div className="space-y-4">
       {events.map((event) => (
@@ -15,7 +19,7 @@ export function TimelineList({ events }: { events: OrderEvent[] }) {
               </p>
             </div>
             <p className="mt-2 text-sm text-muted">
-              {event.type} · {event.actor}
+              {event.type} by {event.actor}
             </p>
           </div>
         </div>

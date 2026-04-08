@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Panel } from "@/components/ui/panel";
@@ -17,6 +18,7 @@ export default async function CustomerDetailPage({
   if (!context) {
     notFound();
   }
+
   const { customer, orders } = context;
 
   return (
@@ -54,10 +56,14 @@ export default async function CustomerDetailPage({
           </p>
           <div className="mt-4 space-y-3">
             {orders.map((order) => (
-              <div key={order.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <Link
+                key={order.id}
+                href={`/orders/${order.id}`}
+                className="block rounded-2xl border border-white/8 bg-white/[0.03] p-4 transition hover:border-white/12 hover:bg-white/[0.05]"
+              >
                 <p className="text-sm font-medium text-white">{order.displayId}</p>
                 <p className="mt-2 text-sm text-muted">{order.issueLabel}</p>
-              </div>
+              </Link>
             ))}
           </div>
         </Panel>

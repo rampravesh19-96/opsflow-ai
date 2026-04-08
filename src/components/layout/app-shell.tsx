@@ -107,10 +107,10 @@ function Sidebar() {
 
       <div className="mt-auto rounded-2xl border border-amber-300/12 bg-amber-300/8 p-4">
         <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-100/80">
-          Milestone 1
+          Platform Status
         </p>
         <p className="mt-2 text-sm leading-6 text-amber-50/88">
-          Live integrations, auth, recovery execution, and AI actions remain intentionally staged for later milestones.
+          Deployable local environment with seeded PostgreSQL data. External integrations, auth, and production observability remain intentionally staged.
         </p>
       </div>
     </aside>
@@ -150,12 +150,12 @@ function AsideRail() {
           <div className="flex items-center gap-2 text-teal-100">
             <Sparkles className="h-4 w-4" />
             <p className="text-[11px] font-medium uppercase tracking-[0.24em]">
-              AI Copilot Placeholder
+              AI Guidance Layer
             </p>
           </div>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Milestone 1 keeps AI disabled in behavior. This rail reserves space for issue summary,
-            classification, and next-action guidance in later milestones.
+            Order-level AI guidance is active inside the detail workspace. This rail remains reserved
+            for future cross-queue assistance and workflow-level operator suggestions.
           </p>
         </div>
 

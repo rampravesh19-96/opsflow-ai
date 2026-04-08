@@ -1,4 +1,4 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { getDb } from "../src/server/db/client";
 import {
   actionRuns,
@@ -22,6 +22,9 @@ import {
   seedPayments,
   seedUsers,
 } from "../src/server/db/seed-data";
+
+dotenv.config({ path: ".env.local", override: false, quiet: true });
+dotenv.config({ path: ".env", override: false, quiet: true });
 
 async function main() {
   const db = getDb();

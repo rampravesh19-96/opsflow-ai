@@ -17,6 +17,11 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "OpsFlow AI",
   description: "AI-assisted operations control center for ecommerce orders.",
+  metadataBase: process.env.APP_URL ? new URL(process.env.APP_URL) : undefined,
+  robots: {
+    follow: false,
+    index: false,
+  },
 };
 
 export default function RootLayout({
