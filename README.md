@@ -86,6 +86,47 @@ This is the best way to judge route speed, loading states, and deployment readin
 
 The seed script is intended for local/demo environments only.
 
+## AWS App Runner Deployment
+
+OpsFlow AI is now prepared for a clean first deployment on AWS App Runner using a container image.
+
+Recommended path:
+- App Runner service from Amazon ECR
+- external PostgreSQL via `DATABASE_URL`
+- standalone Next.js build inside the container
+
+Why this path:
+- it is more reliable than App Runner source-runtime inference for a standalone Next.js app
+- the Docker image controls the exact Node runtime
+- the deployment story stays simple and repeatable
+
+Files added for deployment:
+- `Dockerfile`
+- `.dockerignore`
+- `/api/health` endpoint for App Runner health checks
+- detailed AWS instructions in [docs/deployment/aws-app-runner.md](/c:/Users/ram/Documents/opsflow-ai/docs/deployment/aws-app-runner.md)
+
+High-level flow:
+1. push the schema to the target PostgreSQL database
+2. optionally seed demo data
+3. build and push the container to ECR
+4. create an App Runner service from that ECR image
+5. configure env vars in App Runner
+6. use `/api/health` as the health check path
+
+Required App Runner environment variables:
+
+```env
+DATABASE_URL=postgres://USERNAME:PASSWORD@HOST:5432/opsflow_ai
+DATABASE_SSL=require
+APP_URL=https://YOUR-APP-RUNNER-URL
+NODE_ENV=production
+```
+
+Read the full step-by-step guide here:
+
+- [docs/deployment/aws-app-runner.md](/c:/Users/ram/Documents/opsflow-ai/docs/deployment/aws-app-runner.md)
+
 ## Deployment Notes
 
 The app is configured with production-friendly defaults:
